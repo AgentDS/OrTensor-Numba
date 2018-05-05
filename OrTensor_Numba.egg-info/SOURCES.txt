@@ -1,0 +1,6 @@
+setup.py
+OrTensor_Numba.egg-info/PKG-INFO
+OrTensor_Numba.egg-info/SOURCES.txt
+OrTensor_Numba.egg-info/dependency_links.txt
+OrTensor_Numba.egg-info/requires.txt
+OrTensor_Numba.egg-info/top_level.txt

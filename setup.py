@@ -13,5 +13,5 @@ setup(
     author='Siqi Liang',
     author_email='zszxlsq@gmail.com',
     packages=find_packages(exclude=('tests')),
-    install_requires=['numpy', 'numba']
+    install_requires=['numpy', 'numba', 'sklearn', 'scipy']
 )
