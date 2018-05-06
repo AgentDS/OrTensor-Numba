@@ -1,4 +1,0 @@
-numpy
-numba
-sklearn
-scipy
