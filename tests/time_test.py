@@ -5,8 +5,8 @@
 # @Site    : 
 # @File    : time_test.py
 # @Software: PyCharm
-from OrTensor._numba.basic import Triple_Boolean_Inner_product as inner1
-#from OrTensor._numba.basic import Triple_Boolean_Inner_product2 as inner2
+from OrTensor._numba.basic import Triple_Boolean_Inner_product as inner
+from OrTensor._numba.basic import Boolean_Outer_product as outer
 import time
 import numpy as np
 
@@ -22,17 +22,25 @@ def test_inner_prod_time():
     print("Using numba.prange():  ", end='')
     start1 = time.time()
     for i in range(1000):
-        res1 = inner1(a, b, c)
+        res1 = inner(a, b, c)
     end1 = time.time()
     print("ans = %d, time = %.8fs" % (res1, end1 - start1))
 
-    # print("Using range():  ", end='')
-    # start2 = time.time()
-    # for i in range(1000):
-    #     res2 = inner2(a, b, c)
-    # end2 = time.time()
-    # print("ans = %d, time = %.8fs" % (res2, end2 - start2))
+
+def test_outer_prod_time():
+    I, J, K = 9000, 1000, 1000
+    a = np.ones(I, dtype=np.int8)
+    b = np.ones(J, dtype=np.int8)
+    c = np.ones(K, dtype=np.int8)
+
+    print("Using 2 numba.prange():  ", end='')
+    start1 = time.time()
+    outer(a, b, c)
+    end1 = time.time()
+    print("time = %.8fs" % (end1 - start1))
 
 
 if __name__ == '__main__':
     # test_inner_prod_time()
+    # test_outer_prod_time()
+    pass
