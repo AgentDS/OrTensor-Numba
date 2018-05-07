@@ -8,12 +8,95 @@
 from OrTensor._numba.lambda_update_numba import Matrix_product
 from OrTensor._numba.basic import Vector_Inner_product
 import numpy as np
+import seaborn
+from sklearn.metrics import roc_auc_score
+import matplotlib.pyplot as plt
+import itertools
 from scipy.special import expit
 from scipy.special import logit
 from scipy.special import logsumexp
 
 
+def plot_matrix_ax(matrix, ax):
+    if np.any(matrix < 0):
+        print('rescaling matrix to probabilities...')
+        matrix = 0.5 * (matrix + 1)
+    color_map = seaborn.cubehelix_palette(8, start=2, light=0.5, dark=0, reverse=False, as_cmap=True)
+    seaborn.set_style("whitegrid", {'axes,grid': False})
+    cax = ax.imshow(matrix, aspext='auto', cmap=color_map, vmin=0, vmax=1)
+    return ax, cax
 
+
+def plot_matrix(matrix, fig_size=(7, 4), draw_cbar=True, vmin=0, vmax=1, cmap=None):
+    if np.any(matrix < 0):
+        print('rescaling matrix to probabilities')
+        matrix = 0.5 * (matrix + 1)
+    if cmap is None:
+        cmap = seaborn.cubehelix_palette(8, start=2, dark=0, light=1, reverse=False, as_cmap=True)
+
+    seaborn.set_style("whitegrid", {'axes.grid': False})
+
+    fig = plt.figure(figsize=fig_size)
+    ax = fig.add_subplot(111)
+    cax = ax.imshow(matrix, aspect='auto', cmap=cmap, vmin=vmin, vmax=vmax, origin='upper')
+
+    if draw_cbar is True:
+        fig.colorbar(cax, orientation='vertical')
+
+    return fig, ax
+
+
+def plot_codes(matrix):
+    """
+
+    :param factor: factor matrix
+    :return:
+    """
+    color_map = seaborn.cubehelix_palette(8, start=2, dark=0, light=1, reverse=False, as_cmap=True)
+    seaborn.set_style("whitegrid", {'axes.grid': False})
+
+    r_idx = np.argsort(-matrix.layer.lbda()[:-1])
+
+    fig = plt.figure(figsize=(7, 4))
+    ax_codes = fig.add_subplot(111)
+    ax_codes.imshow(matrix.mean().transpose()[r_idx, :], aspect='auto', cmap=color_map)
+    ax_codes.set_yticks(range(matrix().shape[1]))
+
+    return fig, ax_codes
+
+
+def compute_roc_auc(data, data_train, prediction):
+    """
+    Compute the area under ROC curve
+
+    :param data:
+    :param data_train:
+    :param prediction:
+    :return:
+    """
+    zero_idx = np.where(data_train == 0)
+    zero_idx = zip(list(zero_idx)[0], list(zero_idx)[1], list(zero_idx)[2])
+    auc = roc_auc_score([data[i, j, k] for i, j, k in zero_idx], [prediction[i, j, k] for i, j, k in zero_idx])
+    return auc
+
+
+def split_test_train(data, p=0.1):
+    """
+    In a binary matrix {-1,1}, set randomly
+    p/2 of the 1s and p/2 of the -1s to 0.
+    To create a test set.
+
+    :param data:
+    :param p:
+    :return:
+    """
+    if -1 not in np.unique(data):
+        data = 2 * data - 1
+    num_zeros = np.prod(data.shape) * p
+    idx_pair = list(itertools.product(range(data.shape[0]), range(data.shape[1]), range(data.shape[2])))
+
+    # randomly set some data as unobserved (coded as 0)
+    # TODO
 
 
 def generate_data(A, B, C):
