@@ -9,11 +9,11 @@ import numpy as np
 import math
 from numba import int8, int16, int32, float32, float64
 from numba import jit, prange
-from OrTensor._numba.basic import Boolean_Vector_Inner_product
+from OrTensor._numba.basic import Vector_Inner_product
 
 
 @jit('int8[:,:,:](int8[:,:], int8[:,:], int8[:,:])', nogil=False, nopython=False, parallel=True)
-def Boolean_Matrix_product(A, B, C):
+def Matrix_product(A, B, C):
     """
 
     :param A: IxR
@@ -28,7 +28,7 @@ def Boolean_Matrix_product(A, B, C):
     for i in prange(I):
         for j in prange(J):
             for k in range(K):
-                X[i, j, k] = Boolean_Vector_Inner_product(A[i, :], B[j, :], C[k, :])
+                X[i, j, k] = Vector_Inner_product(A[i, :], B[j, :], C[k, :])
     return X
 
 

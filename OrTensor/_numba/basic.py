@@ -19,7 +19,7 @@ Only missing data is coded as 0.
 
 
 @jit('int8(int8[:], int8[:], int8[:])', nopython=True, nogil=True)
-def Boolean_Vector_Inner_product(A_i, B_j, C_k):
+def Vector_Inner_product(A_i, B_j, C_k):
     """
     Calculate the Boolean product of three vectors of the same length.
 
@@ -37,7 +37,7 @@ def Boolean_Vector_Inner_product(A_i, B_j, C_k):
 
 
 @jit('int8[:,:,:](int8[:], int8[:], int8[:])', nopython=False, nogil=True, parallel=True)
-def Boolean_Outer_product(a, b, c):
+def Boolean_Vector_Outer_product(a, b, c):
     """
     Return the result of outer product of 3 vectors via boolean operations.
 
