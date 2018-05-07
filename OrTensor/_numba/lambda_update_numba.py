@@ -52,6 +52,15 @@ def correct_prediction(A, B, C, X):
     return P
 
 
-def lambda_update():
-    # TODO
-    pass
+def lambda_update(parm):
+    """
+    Set lambda to its MLE:
+    $\\frac{1}{1+e^{-\\lambda}}=\\frac{P}{IJK}$
+
+    :param parm:
+    :return:
+    """
+
+    P = correct_prediction(*[factor.val for factor in parm.layer.factors], parm.layer.child())
+    IJK = np.prod(parm.layer.child().shape) - np.count_nonzero(parm.layer.child() == 0)
+    parm.val = np.max([0, np.min([1000, -np.log(IJK / float(P) - 1)])])
