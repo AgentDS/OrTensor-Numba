@@ -122,4 +122,38 @@ class OTMatrix(OTTrace):
         self.val[self.val == 0] = -1
 
 
+class OTLayer():
+    def __init__(self, factors, lbda, child):
+        """
+
+        :param factors: 3 factor matrices, IxR, JxR, KxR
+        :param lbda: vector, containing R elements
+        :param child: IxJxK, tensor which can be constructed from 3 factor matrices
+        """
+        self.factors = sorted(factors, key=lambda mat: mat.child_axis)
+        self.lbda = lbda
+        self.lbda.layer = self
+        self.child = child
+        # TODO: append(self) or append(factors)??
+        self.child.parents.append(self)
+        for factor in factors:
+            factor.layer = self
+        self.prediction = None
+
+    @property
+    def A(self):
+        return self.factors[0]
+
+    @property
+    def B(self):
+        return self.factors[1]
+
+    @property
+    def C(self):
+        return self.factors[2]
+    
+    @property
+    def __iter__(self):
+        return iter(self.factors)
+
 
