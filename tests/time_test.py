@@ -5,8 +5,8 @@
 # @Site    : 
 # @File    : time_test.py
 # @Software: PyCharm
-from OrTensor._numba.basic import Triple_Boolean_Inner_product as inner
-from OrTensor._numba.basic import Boolean_Outer_product as outer
+# from OrTensor.basic_numba import Triple_Boolean_Inner_product as inner
+# from OrTensor.basic_numba import Boolean_Outer_product as outer
 import time
 import numpy as np
 

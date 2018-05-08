@@ -5,8 +5,8 @@
 # @Site    : 
 # @File    : auxiliary_lib.py
 # @Software: PyCharm
-from OrTensor._numba.lambda_update_numba import Matrix_product
-from OrTensor._numba.basic import Vector_Inner_product
+from OrTensor.basic_numba import Matrix_product
+from OrTensor.basic_numba import Vector_Inner_product
 import numpy as np
 import seaborn
 from sklearn.metrics import roc_auc_score
@@ -93,10 +93,22 @@ def split_test_train(data, p=0.1):
     if -1 not in np.unique(data):
         data = 2 * data - 1
     num_zeros = np.prod(data.shape) * p
-    idx_pair = list(itertools.product(range(data.shape[0]), range(data.shape[1]), range(data.shape[2])))
+    idx_pairs = list(itertools.product(range(data.shape[0]), range(data.shape[1]), range(data.shape[2])))
 
-    # randomly set some data as unobserved (coded as 0)
-    # TODO
+    # randomly set same number -1/1 data as unobserved (coded as 0)
+    true_idx_pairs = [idx for idx in idx_pairs if data[idx] == 1]
+    false_idx_pairs = [idx for idx in idx_pairs if data[idx] == -1]
+    true_num = len(true_idx_pairs)
+    false_num = len(false_idx_pairs)
+    true_random_idx = np.random.choice(range(true_num), int(num_zeros / 2), replace=False)
+    false_random_idx = np.random.choice(range(false_num), int(num_zeros / 2), replace=False)
+    data_train = data.copy()
+    for i, j, k in true_random_idx:
+        data_train[i, j, k] = 0
+    for i, j, k in false_random_idx:
+        data_train[i, j, k] = 0
+
+    return data_train
 
 
 def generate_data(A, B, C):
@@ -163,9 +175,16 @@ def check_bin_coding(data):
     return np.array(data, dtype=np.int8)
 
 
-def check_converge_trace(trace, tol):
+def check_converge_single_trace(trace, tol):
     """
     compare the mean of first and second half of a sequence,
     check whether there difference is > tolerance.
     """
     r = int(len(trace) / 2)
+    first = expit(np.mean(trace[:r]))
+    second = expit(np.mean(trace[r:]))
+    whole = expit(np.mean(trace))
+    if np.abs(first-second) < tol:
+        return True
+    else:
+        return False
