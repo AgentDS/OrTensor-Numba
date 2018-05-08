@@ -3,7 +3,7 @@
 # @Time    : 2018/5/6 下午11:12
 # @Author  : Shiloh Leung
 # @Site    : 
-# @File    : Models.py
+# @File    : OTModels.py
 # @Software: PyCharm
 
 """
@@ -63,12 +63,63 @@ class OTMatrix(OTTrace):
                  child_axis=None, fixed=False):
         self.trace_idx = 0
         self.sampling_func = None
-        self.child_axis = child_axis
+        self.child_axis = child_axis  # index of factor matrix (0,1 or 2)
         self.parents = []
         self.bernoulli_prior = bernoulli_prior
         if val is not None:
             shape = val.shape
+        # Elements of self.val are all mapped in {-1, 1}
+        # if already given value, assign it
         if type(val) is np.ndarray:
             self.val = np.array(val, dtype=np.int8)
         elif type(val) is float:
             self.val = 2 * np.array(rand(*shape) > val, dtype=np.int8) - 1
+        # otherwise generate bernoulli random data
+        else:
+            self.val = 2 * np.array(rand(*shape) > 0.5, dtype=np.int8) - 1
+
+        self.fixed = fixed
+        # fix some matrix entries
+        self.fixed_entries = np.zeros(self().shape, dtype=np.int8)
+
+        self.layer = None
+
+    def __call__(self):
+        return self.val
+
+    def display(self, method='mean'):
+        if method == 'mean':
+            lib.plot_matrix(self.mean())
+        elif method == 'map':
+            lib.plot_matrix(self.mean() > 0.5)
+        elif method == 'original':
+            lib.plot_matrix(self())
+        else:
+            raise ValueError("only support 'mean', 'map', 'original' methods.")
+
+    @property
+    def model(self):
+        if 'layer' in self.__dict__.keys() and self.layer is not None:
+            return self.layer.model
+        else:
+            return None
+
+    @property
+    def siblings(self):
+        """
+        Retuen other 2 factor matrices in child_axis order.
+
+        :return: [np.ndarray, np.ndarray], 2 siblings of self factor matrix
+        """
+        siblings = [mat for mat in self.layer.factors if mat is not self]
+        return sorted(siblings, key=lambda mat: mat.child_axis)
+
+    def set_to_map(self):
+        """
+        Map sef.val to {-1, 1}.
+        """
+        self.val = np.array(self.mean() > 0, dtype=np.int8)
+        self.val[self.val == 0] = -1
+
+
+
