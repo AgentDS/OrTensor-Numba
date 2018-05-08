@@ -107,7 +107,7 @@ class OTMatrix(OTTrace):
     @property
     def siblings(self):
         """
-        Retuen other 2 factor matrices in child_axis order.
+        Return other 2 factor matrices in child_axis order.
 
         :return: [np.ndarray, np.ndarray], 2 siblings of self factor matrix
         """
