@@ -34,6 +34,18 @@ def Vector_Inner_product(A_i, B_j, C_k):
     return -1
 
 
+@jit('float64(float64[:], float64[:], float64[:])', nogil=True, nopython=True)
+def Vector_Inner_product_fuzzy(A_i, B_j, C_k):
+    """
+    Compute probability of emitting a zero for fuzzy vectors under OR-AND logic.
+    """
+    out = np.float64(1.0)
+    R = A_i.shape[0]
+    for r in range(R):
+        out *= 1 - (A_i[r] * B_j[r] * C_k[r])
+    return 1 - out
+
+
 @jit('int8[:,:,:](int8[:], int8[:], int8[:])', nopython=False, nogil=True, parallel=True)
 def Boolean_Vector_Outer_product(a, b, c):
     """
@@ -99,6 +111,19 @@ def Matrix_product(A, B, C):
         for j in prange(J):
             for k in range(K):
                 X[i, j, k] = Vector_Inner_product(A[i, :], B[j, :], C[k, :])
+    return X
+
+
+@jit('float64[:,:](float64[:,:], float64[:,:], float64[:,:])', nogil=True, nopython=False, parallel=True)
+def Matrix_product_fuzzy(A, B, C):
+    I = A.shape[0]
+    J = B.shape[0]
+    K = C.shape[0]
+    X = np.zeros([I, J, K], dtype=np.float64)
+    for i in prange(I):
+        for j in prange(J):
+            for k in range(M):
+                X[i, j, k] = Vector_Inner_product_fuzzy(A[i, :], B[j, :], C[k, :])
     return X
 
 

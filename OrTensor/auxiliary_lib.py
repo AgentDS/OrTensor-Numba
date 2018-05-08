@@ -6,6 +6,7 @@
 # @File    : auxiliary_lib.py
 # @Software: PyCharm
 from OrTensor.basic_numba import Matrix_product
+from OrTensor.basic_numba import Matrix_product_fuzzy
 from OrTensor.basic_numba import Vector_Inner_product
 import numpy as np
 import seaborn
@@ -111,7 +112,7 @@ def split_test_train(data, p=0.1):
     return data_train
 
 
-def generate_data(A, B, C):
+def generate_data(A, B, C, fuzzy=False):
     """
 
     :param A: IxR
@@ -119,7 +120,12 @@ def generate_data(A, B, C):
     :param C: KxR
     :return: Tensor X, IxJxK, mapped in [-1, 1]
     """
-    return Matrix_product(A, B, C)
+    if fuzzy is False:
+        return Matrix_product(A, B, C)
+    else:
+        return Matrix_product_fuzzy(np.array(A, dtype=np.float64),
+                                    np.array(B, dtype=np.float64),
+                                    np.array(C, dtype=np.float64))
 
 
 def add_bernoulli_noise(X, p):
@@ -184,7 +190,7 @@ def check_converge_single_trace(trace, tol):
     first = expit(np.mean(trace[:r]))
     second = expit(np.mean(trace[r:]))
     whole = expit(np.mean(trace))
-    if np.abs(first-second) < tol:
+    if np.abs(first - second) < tol:
         return True
     else:
         return False

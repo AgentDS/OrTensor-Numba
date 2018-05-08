@@ -10,9 +10,11 @@
 Models design for OrTensor, including
 """
 import numpy as np
+from numpy.random import rand
+from scipy.special import expit
+from scipy.special import logit
 import OrTensor.auxiliary_lib as lib
 import OrTensor.basic_numba as basic
-from numpy.random import rand
 
 
 class OTTrace():
@@ -151,9 +153,68 @@ class OTLayer():
     @property
     def C(self):
         return self.factors[2]
-    
+
     @property
     def __iter__(self):
         return iter(self.factors)
 
+    @property
+    def __repr__(self):
+        parents_string = ', '.join([str(mat.shape[0]) + 'x' + str(mat.shape[1]) for mat in self.factors])
+        child_string = 'x'.join([str(mat.shape[0]) for mat in self.factors])
+        return '<OrTensor: ' + parents_string + ' -> ' + child_string + '>'
+
+    def output(self,
+               method='factor_map',
+               noisy=False,
+               lazy=False,
+               map_to_prob=True):
+        """
+        Compute output matrix from posterior samples.
+        Valid methods are:
+            - 'point_estimate'
+                output of the current state of factors
+            - 'Factor-MAP' TODO
+                From the posterior MAP of factors
+            - 'Factor-MEAN'
+                Computed from posterior mean of factors
+
+        Note, that outputs are always probabilities in (0,1)
+
+        :param method:
+        :param noisy:
+        :param map_to_prob:
+        :return:
+        """
+        if type(self.prediction) is np.ndarray and lazy is True:
+            print('returning previously computed value ' +
+                  'under disregard of technique.')
+            return self.prediction
+        if method == 'poit_estimate':
+            out_tensor = lib.generate_data(self.A, self.B, self.C)
+            out_tensor = (1 + out_tensor) * 0.5
+        elif method == 'factor_map':
+            tmpA = 2 * (self.A.mean() > 0) - 1
+            tmpB = 2 * (self.B.mean() > 0) - 1
+            tmpC = 2 * (self.C.mean() > 0) - 1
+            out_tensor = lib.generate_data(tmpA, tmpB, tmpC)
+            out_tensor = np.array(out_tensor == 1, dtype=np.int8)
+        elif method == 'factor_mean':
+            # output does not need to be mapped to probabilities
+            tmpA = 0.5 * (self.A.mean() + 1)
+            tmpB = 0.5 * (self.B.mean() + 1)
+            tmpC = 0.5 * (self.C.mean() + 1)
+            out_tensor = lib.generate_data(tmpA, tmpB, tmpC,  # map to (0,1)
+                                           fuzzy=True)
+
+        # convert to probability of generating 1
+        if noisy is True:
+            out_tensor = out_tensor * expit(self.lbda.mean()) + \
+                         (1 - out_tensor) * lib.expit(-self.lbda.mean())
+        self.prediction = out_tensor
+
+        if map_to_prob is True:
+            return out_tensor
+        else:
+            return 2 * out_tensor - 1
 
