@@ -3,14 +3,12 @@
 # @Time    : 2018/5/5 下午11:34
 # @Author  : Shiloh Leung
 # @Site    : 
-# @File    : basic.py
+# @File    : basic_numba.py
 # @Software: PyCharm
 import numpy as np
-import math
 from scipy.special import expit
 from numba import int8, int16, int32, float32, float64
 from numba import jit, prange
-from OrTensor._numba.post_accumulator_numba import posterior_accumulator
 
 """
 Each element in tensor X is in {-1, 0, 1}.
@@ -84,8 +82,6 @@ def flip_metropolized_Gibbs_numba(prob, a):
         return a
 
 
-
-
 @jit('int8[:,:,:](int8[:,:], int8[:,:], int8[:,:])', nogil=False, nopython=False, parallel=True)
 def Matrix_product(A, B, C):
     """
@@ -104,7 +100,6 @@ def Matrix_product(A, B, C):
             for k in range(K):
                 X[i, j, k] = Vector_Inner_product(A[i, :], B[j, :], C[k, :])
     return X
-
 
 
 # post_accumulator_numba
@@ -133,17 +128,12 @@ def posterior_accumulator(B, C, A_i, X_i, r):
 
             flag = False
             for r_ in range(R):
-                if (r_ != r) and (A_i[r_]*B[j,r_]*C[k,r_]==1):
+                if (r_ != r) and (A_i[r_] * B[j, r_] * C[k, r_] == 1):
                     flag = True
                     break
             if flag is False:
-                accumulator += X_i[j,k]
+                accumulator += X_i[j, k]
     return accumulator
-
-
-
-
-
 
 
 @jit('int64(int8[:,:], int8[:,:], int8[:,:], int8[:,:,:])', nogil=True, nopython=True, parallel=True)
@@ -161,14 +151,9 @@ def correct_prediction(A, B, C, X):
     for i in prange(I):
         for j in prange(J):
             for k in range(K):
-                if X[i, j, k] == Boolean_Vector_Inner_product(A[i, :], B[j, :], C[k, :]):
+                if X[i, j, k] == Vector_Inner_product(A[i, :], B[j, :], C[k, :]):
                     P += 1
     return P
-
-
-
-
-
 
 
 def lambda_update(parm):
