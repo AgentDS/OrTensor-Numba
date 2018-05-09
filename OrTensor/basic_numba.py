@@ -127,6 +127,19 @@ def Matrix_product_fuzzy(A, B, C):
     return X
 
 
+# def make_sampling_fct_onechild(model):
+@jit('void(int8[:,:], int8[:,:], int8[:,:], int8[:,:],' +
+     'int8[:,:,:], float64, float64)', nogil=True, nopython=True, parallel=True)
+def sampling_fct(A, A_fixed, B, C, X, lbda, logit_prior):
+    I, R = A.shape
+    for i in prange(I):
+        for r in range(R):
+            if A_fixed[i, r] == 1:
+                continue
+            logit_score = lbda * posterior_accumulator(B, C, A[i, :], X[i, :, :], r)
+            A[i, r] = flip_metropolized_Gibbs_numba(logit_score + logit_prior, A[i, r])
+
+
 # post_accumulator_numba
 @jit('int16(int8[:,:], int8[:,:], int8[:], int8[:,:], int16)', nopython=True, nogil=True)
 def posterior_accumulator(B, C, A_i, X_i, r):
