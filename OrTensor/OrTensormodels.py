@@ -503,3 +503,74 @@ class OTModel():
             [mat.sampling_fct(mat) for mat in np.random.permutation(matrices)]
             [lbda.sampling_fct(lbda) for lbda in lbdas]
             [x.update_trace() for x in lbdas]
+
+    def infer(self,
+              num_samples=50,
+              convergence_window=15,
+              convergence_tol=5e-3,
+              burn_in_min=30,
+              burn_in_max=2000,
+              print_internal=10,
+              fix_lbda_iters=0):
+        """
+        Infer matrices and parameters, starting with burn-in and subsequent
+        sampling phase.
+        """
+
+        # create list of matrices to draw samples from
+        mats = [mat for mat in self.members if not mat.fixed]
+        # sort from large to small, does it affect convergence?
+        # mats = sorted(mats, key=lambda x: x.val.shape[0], reverse=True) TODO
+
+        # list of parameters to be updated
+        lbdas = [lbda for lbda in self.lbdas if not lbda.fixed]
+
+        for mat in mats:
+            mat.sampling_fct = mat_wrappers.get_sampling_fct(mat)
+        for lbda in lbdas:
+            lbda.sampling_fct = lbda_wrappers.get_update_fct(lbda)
+
+        # ascertain sure all trace indices are zero
+        for mat in mats:
+            mat.trace_index = 0
+        for lbda in lbdas:
+            if lbda is not None:
+                lbda.trace_index = 0
+
+        # burn in markov chain
+        print('burning in markov chain...')
+        self.burn_in(mats,
+                     lbdas,
+                     tol=convergence_tol,
+                     convergence_window=convergence_window,
+                     burn_in_min=burn_in_min,
+                     burn_in_max=burn_in_max,
+                     print_internal=print_internal,
+                     fix_lbda_iters=fix_lbda_iters)
+
+        # allocate memory to save samples
+        print('allocating memory to save samples...')
+        for mat in mats:
+            mat.allocate_trace_arrays(num_samples)
+        for lbda in lbdas:
+            lbda.allocate_trace_arrays(num_samples)
+
+        print('drawing samples...')
+        for sampling_iter in range(1, num_samples + 1):
+
+            # sample mats and write to trace # shuffle(mats)
+            [mat.sampling_fct(mat) for mat in np.random.permutation(mats)]
+            [mat.update_trace() for mat in mats]
+
+            # sample lbdas and write to trace
+            [lbda.sampling_fct(lbda) for lbda in lbdas]
+            [lbda.update_trace() for lbda in lbdas]
+
+            if sampling_iter % print_internal == 0:
+                print('\r\t' + 'iteration ' +
+                      str(sampling_iter) +
+                      '; recon acc.: ' +
+                      '\t--\t'.join([x.print_value() for x in lbdas]),
+                      end='')
+
+        print('\nfinished.')
