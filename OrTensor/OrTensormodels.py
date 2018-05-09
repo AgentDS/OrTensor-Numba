@@ -124,12 +124,105 @@ class OTMatrix(OTTrace):
         self.val[self.val == 0] = -1
 
 
+class OTTensor(OTTrace):
+    def __init__(self, shape=None, val=None, fixed=False):
+        self.trace_idx = 0
+        self.parents = []
+        if val is not None:
+            shape = val.shape
+
+        # Elements of self.val are all mapped in {-1, 1}
+        # if already given value, assign it
+        if type(val) is np.ndarray:
+            self.val = np.array(val, dtype=np.int8)
+        elif type(val) is float:
+            self.val = 2 * np.array(rand(*shape) > val, dtype=np.int8) - 1
+        # otherwise generate bernoulli random data
+        else:
+            self.val = 2 * np.array(rand(*shape) > 0.5, dtype=np.int8) - 1
+
+        self.fixed = fixed
+        # fix some matrix entries
+        self.fixed_entries = np.zeros(self().shape, dtype=np.int8)
+
+        self.layer = None
+        self.shape = shape
+
+    def __call__(self):
+        return self.val
+
+    def display(self, axis, method='mean'):
+        if method == 'mean':
+            if axis == 0:
+                I = self.shape[0]
+                for i in range(I):
+                    lib.plot_matrix(self.val[i, :, :].mean())
+            elif axis == 1:
+                J = self.shape[1]
+                for j in range(J):
+                    lib.plot_matrix(self.val[:, j, :].mean())
+            elif axis == 2:
+                K = self.shape[2]
+                for k in range(K):
+                    lib.plot_matrix(self.val[:, :, k].mean())
+            else:
+                raise ValueError("'axis' can only be 0, 1 or 2")
+
+        elif method == 'map':
+            if axis == 0:
+                I = self.shape[0]
+                for i in range(I):
+                    lib.plot_matrix(self.val[i, :, :].mean() > 0.5)
+            elif axis == 1:
+                J = self.shape[1]
+                for j in range(J):
+                    lib.plot_matrix(self.val[:, j, :].mean() > 0.5)
+            elif axis == 2:
+                K = self.shape[2]
+                for k in range(K):
+                    lib.plot_matrix(self.val[:, :, k].mean() > 0.5)
+            else:
+                raise ValueError("'axis' can only be 0, 1 or 2")
+        elif method == 'original':
+            if axis == 0:
+                I = self.shape[0]
+                for i in range(I):
+                    lib.plot_matrix(self.val[i, :, :])
+            elif axis == 1:
+                J = self.shape[1]
+                for j in range(J):
+                    lib.plot_matrix(self.val[:, j, :])
+            elif axis == 2:
+                K = self.shape[2]
+                for k in range(K):
+                    lib.plot_matrix(self.val[:, :, k])
+            else:
+                raise ValueError("'axis' can only be 0, 1 or 2")
+
+        else:
+            raise ValueError("only support 'mean', 'map', 'original' methods.")
+
+    @property
+    def model(self):
+        if 'layer' in self.__dict__.keys() and self.layer is not None:
+            return self.layer.model
+        else:
+            return None
+
+    def set_to_map(self):
+        """
+        Map sef.val to {-1, 1}.
+        """
+        self.val = np.array(self.mean() > 0, dtype=np.int8)
+        self.val[self.val == 0] = -1
+
+
 class OTLayer():
-    def __init__(self, factors, lbda, child):
+    def __init__(self, factors, lbda: OTParameter, child: OTTensor):
         """
 
-        :param factors: 3 factor matrices, IxR, JxR, KxR
-        :param lbda: vector, containing R elements
+        :param factors: list of OTMatrix, 3 factor matrices, IxR, JxR, KxR
+        :param lbda: OTParameter
         :param child: IxJxK, tensor which can be constructed from 3 factor matrices
         """
         self.factors = sorted(factors, key=lambda mat: mat.child_axis)
@@ -174,7 +267,7 @@ class OTLayer():
         Valid methods are:
             - 'point_estimate'
                 output of the current state of factors
-            - 'Factor-MAP' TODO
+            - 'Factor-MAP' ????
                 From the posterior MAP of factors
             - 'Factor-MEAN'
                 Computed from posterior mean of factors
@@ -218,3 +311,85 @@ class OTLayer():
         else:
             return 2 * out_tensor - 1
 
+
+class OTModel():
+    """
+    Package matrices, parameters and inference methods.
+    """
+
+    def __init__(self):
+        """
+        Initialize OrTensor model.
+        """
+        self.layer = None
+        self.tensor = None
+        self.matrices = []
+        self.anneal = False
+
+    @property
+    def members(self):
+        """
+        Return all matrices in the layer.
+        """
+        return [self.tensor, self.layer.A, self.layer.B, self.layer.C]
+
+    @property
+    def lbda(self):
+        return self.layer.lbda
+
+    def add_layer(self, rank=None, child=None, shape=None):
+        """
+
+        :param rank: rank of decomposition mode;
+        :param child: tensor of shape IxJxK
+        :param shape: (I, J, K)
+        :return:
+        """
+        # determine seize of all members
+        if child is None and shape is not None:
+            child = OTTensor(shape=shape)
+        elif shape is None and child is not None:
+            shape = child().shape
+        else:
+            raise ValueError("Need shape information or child (original tensor) information at least.")
+
+        # initialize factor matrices
+        factors = [OTMatrix(shape=(I, rank), child_axis=idx) for idx, I in enumerate(shape)]
+
+        # initialize lambda
+        lbda_init = 0.05
+        lbda = OTParameter(val=lbda_init)
+
+        # initialize layer object
+        layer = OTLayer(factors, lbda, child)
+        self.layer = layer
+        return layer
+
+    def add_tensor(self, val=None, shape=None):
+        if val is not None and val.dtype != np.int8:
+            val = np.array(val, dtype=np.int8)
+
+        tensor = OTTensor(shape, val)
+        self.tensor = tensor
+        return tensor
+
+    def burn_in(self, matrices, lbda, tol=1e-2,
+                convergence_window=15,
+                burn_in_min=0,
+                burn_in_max=2000,
+                print_internal=10,
+                fix_ibda_iters=0):
+        """
+
+
+
+        :param matrices:
+        :param lbda:
+        :param tol:
+        :param convergence_window:
+        :param burn_in_min:
+        :param burn_in_max:
+        :param print_internal:
+        :param fix_ibda_iters:
+        :return:
+        """
