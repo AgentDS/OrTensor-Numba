@@ -516,12 +516,8 @@ class OTModel():
         Infer matrices and parameters, starting with burn-in and subsequent
         sampling phase.
         """
-
         # create list of matrices to draw samples from
         mats = [mat for mat in self.members if not mat.fixed]
-        # sort from large to small, does it affect convergence?
-        # mats = sorted(mats, key=lambda x: x.val.shape[0], reverse=True) TODO
-
         # list of parameters to be updated
         lbdas = [lbda for lbda in self.lbdas if not lbda.fixed]
 
