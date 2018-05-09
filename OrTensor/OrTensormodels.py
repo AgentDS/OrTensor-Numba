@@ -380,8 +380,10 @@ class OTModel():
                 print_internal=10,
                 fix_ibda_iters=0):
         """
-
-
+        draw samples without saving to traces and check for convergence.
+        There is an additional pre-burn-in phase where
+        do not need to check for convergence.
+        Convergence is detected by comparing means of noise parameters.
 
         :param matrices:
         :param lbda:
@@ -393,3 +395,4 @@ class OTModel():
         :param fix_ibda_iters:
         :return:
         """
+
