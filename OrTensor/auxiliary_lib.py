@@ -194,3 +194,62 @@ def check_converge_single_trace(trace, tol):
         return True
     else:
         return False
+
+
+def clean_up_codes(layer, reset=True, clean=False):
+    """
+    Remove redundant or all-zero latent dimensions
+    from layer and adjust all attributes accordingly.
+    Return True, if any dimension was removed, False otherwise.
+    """
+
+    if reset is True:
+        cleaning_action = reset_dimension
+    elif clean is True:
+        cleaning_action = remove_dimension
+
+    reduction_applied = False
+    # remove inactive codes
+    r = 0
+    while r < layer.size:  # need to use while loop because layer.size changes.
+        if np.any([np.all(f()[:, r] == -1) for f in layer.factors]):
+            cleaning_action(r, layer)
+            reduction_applied = True
+        r += 1
+
+    # remove duplicates
+    r = 0
+    while r < layer.size:
+        r_ = r + 1
+        while r_ < layer.size:
+            for f in layer.factors:
+                if np.all(f()[:, r] == f()[:, r_]):
+                    reduction_applied = True
+                    cleaning_action(r_, layer)
+                    break
+            r_ += 1
+        r += 1
+
+    if reduction_applied is True:
+        if reset is True:
+            print('\n\tre-initialise duplicate or useless latent ' +
+                  'dimensions and restart burn-in. New L=' + str(layer.size))
+
+        elif clean is True:
+            print('\n\tremove duplicate or useless latent ' +
+                  'dimensions and restart burn-in. New L=' + str(layer.size))
+
+    return reduction_applied
+
+
+def remove_dimension(r_, layer):
+    # update for tensorm link does not support parents
+    # nor priors
+    # layer.size -= 1
+    for f in layer.factors:
+        f.val = np.delete(f.val, r_, axis=1)
+
+
+def reset_dimension(r_, layer):
+    for f in layer.factors:
+        f.val[:, r_] = -1

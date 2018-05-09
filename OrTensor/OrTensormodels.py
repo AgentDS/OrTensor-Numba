@@ -53,10 +53,14 @@ class OTParameter(OTTrace):
 
     def __init__(self, val, fixed=False):
         self.trace_idx = 0
-        self.sampling_func = None
+        self.sampling_fct = None
         self.val = val
         self.fixed = fixed
         self.beta_prior = (1, 1)
+
+    def print_value(self):
+        return '\t'.join([str(round(expit(np.mean(x)), 3))
+                          for x in [self.val]])
 
 
 class OTMatrix(OTTrace):
@@ -64,7 +68,7 @@ class OTMatrix(OTTrace):
                  bernoulli_prior=0.5,
                  child_axis=None, fixed=False):
         self.trace_idx = 0
-        self.sampling_func = None
+        self.sampling_fct = None
         self.child_axis = child_axis  # index of factor matrix (0,1 or 2)
         self.parents = []
         self.bernoulli_prior = bernoulli_prior
@@ -233,6 +237,8 @@ class OTLayer():
         self.child.parents.append(self)
         for factor in factors:
             factor.layer = self
+        self.auto_clean = False
+        self.auto_reset = False
         self.prediction = None
 
     @property
@@ -373,12 +379,12 @@ class OTModel():
         self.tensor = tensor
         return tensor
 
-    def burn_in(self, matrices, lbda, tol=1e-2,
+    def burn_in(self, matrices, lbdas, tol=1e-2,
                 convergence_window=15,
                 burn_in_min=0,
                 burn_in_max=2000,
                 print_internal=10,
-                fix_ibda_iters=0):
+                fix_lbda_iters=0):
         """
         draw samples without saving to traces and check for convergence.
         There is an additional pre-burn-in phase where
@@ -392,7 +398,108 @@ class OTModel():
         :param burn_in_min:
         :param burn_in_max:
         :param print_internal:
-        :param fix_ibda_iters:
+        :param fix_lbda_iters:
         :return:
         """
+        # pre-burn-in phase
+        pre_burn_in_iter = 0
+        while True:
+            if pre_burn_in_iter == burn_in_min:
+                break
+            pre_burn_in_iter += 1
+            if pre_burn_in_iter % print_internal == 0:
+                print('\r\titeration: ' +
+                      str(pre_burn_in_iter) +
+                      ' disperion.: ' +
+                      '\t--\t '.join([x.print_value() for x in lbdas]),
+                      end='')
+            # draw samples
+            [mat.sampling_fct(mat) for mat in np.random.permutation(matrices)]
+            # update lambda
+            if pre_burn_in_iter > fix_lbda_iters:
+                if self.anneal is False:
+                    [lbda.sampling_fct(lbda) for lbda in lbdas]
 
+                # Anneal lambda for pre_burn_in_iter steps to
+                # it's initially given value.
+                elif self.anneal is True:
+                    try:
+                        assert fix_lbda_iters == 0
+                    except:
+                        raise ValueError('fix_lbda_iters should be zero for annealing.')
+                    # pre-compute annealing steps
+                    if pre_burn_in_iter == fix_lbda_iters + 1:
+                        annealing_lbdas = [np.arange(
+                            lbda() / burn_in_min,
+                            lbda() + 2 * lbda() / burn_in_min,
+                            lbda() / burn_in_min)
+                            for lbda in lbdas]
+
+                    for lbda_idx, lbda in enumerate(lbdas):
+                        lbda.val = annealing_lbdas[lbda_idx][pre_burn_in_iter]
+
+        # allocate array for lambda traces for burn in detection
+        for lbda in lbdas:
+            lbda.allocate_trace_arrays(convergence_window)
+            lbda.trace_index = 0  # reset trace index
+
+        # now cont. burn in and check for convergence
+        burn_in_iter = 0
+        while True:
+            burn_in_iter += 1
+
+            # print diagnostics
+            if burn_in_iter % print_internal == 0:
+                print('\r\titeration: ' +
+                      str(pre_burn_in_iter + burn_in_iter) +
+                      ' recon acc.: ' +
+                      '\t--\t '.join([x.print_value() for x in lbdas]),
+                      end='')
+
+            #  check convergence every convergence_window iterations
+            if burn_in_iter % convergence_window == 0:
+                # reset trace index
+                for lbda in lbdas:
+                    lbda.trace_index = 0
+
+                # check convergence for all lbdas
+                if np.all([x.check_convergence(tol=tol) for x in lbdas]):
+                    print('\n\tconverged at reconstr. accuracy: ' +
+                          '\t--\t'.join([x.print_value() for x in lbdas]))
+
+                    # TODO: make this nice and pretty.
+                    # check for dimensions to be removed and restart burn-in if
+                    # layer.auto_clean_up is True
+                    if self.layer.auto_clean is True or self.layer.auto_reset is True:
+                        if np.any([lib.clean_up_codes(self.layer,
+                                                      self.layer.auto_reset,
+                                                      self.layer.auto_clean)]):
+
+                            for lbda in lbdas:
+                                # reallocate arrays for lbda trace
+                                lbda.allocate_trace_arrays(convergence_window)
+                                lbda.trace_index = 0
+
+                        else:
+                            # save nu of burn in iters
+                            self.burn_in_iters = burn_in_iter + pre_burn_in_iter
+                            break
+
+            # stop if max number of burn in inters is reached
+            if (burn_in_iter + pre_burn_in_iter) > burn_in_max:
+
+                # clean up non-converged auto-reset dimensions
+                if self.layer.auto_reset is True:
+                    lib.clean_up_codes(self.layer, reset=False, clean=True)
+
+                print('\n\tmax burn-in iterations reached without convergence')
+                # reset trace index
+                for lbda in lbdas:
+                    lbda.trace_index = 0
+                self.burn_in_iters = burn_in_iter
+                break
+
+            # draw samples # shuffle(mats)
+            [mat.sampling_fct(mat) for mat in np.random.permutation(matrices)]
+            [lbda.sampling_fct(lbda) for lbda in lbdas]
+            [x.update_trace() for x in lbdas]
