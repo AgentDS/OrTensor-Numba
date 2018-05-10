@@ -15,6 +15,8 @@ from scipy.special import expit
 from scipy.special import logit
 import OrTensor.auxiliary_lib as lib
 import OrTensor.basic_numba as basic
+import OrTensor.matrix_update as mat_update
+import OrTensor.lambda_update as lbda_update
 
 
 class OTTrace():
@@ -522,9 +524,9 @@ class OTModel():
         lbdas = [lbda for lbda in self.lbdas if not lbda.fixed]
 
         for mat in mats:
-            mat.sampling_fct = mat_wrappers.get_sampling_fct(mat)
+            mat.sampling_fct = mat_update.get_sampling_fct(mat)
         for lbda in lbdas:
-            lbda.sampling_fct = lbda_wrappers.get_update_fct(lbda)
+            lbda.sampling_fct = lbda_update.get_update_fct(lbda)
 
         # ascertain sure all trace indices are zero
         for mat in mats:

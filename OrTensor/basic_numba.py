@@ -206,3 +206,5 @@ def lambda_update(parm):
     P = correct_prediction(*[factor.val for factor in parm.layer.factors], parm.layer.child())
     IJK = np.prod(parm.layer.child().shape) - np.count_nonzero(parm.layer.child() == 0)
     parm.val = np.max([0, np.min([1000, -np.log(IJK / float(P) - 1)])])
+
+
