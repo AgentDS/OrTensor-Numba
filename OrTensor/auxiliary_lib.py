@@ -81,35 +81,35 @@ def compute_roc_auc(data, data_train, prediction):
     return auc
 
 
-def split_test_train(data, p=0.1):
-    """
-    In a binary matrix {-1,1}, set randomly
-    p/2 of the 1s and p/2 of the -1s to 0.
-    To create a test set.
-
-    :param data:
-    :param p:
-    :return:
-    """
-    if -1 not in np.unique(data):
-        data = 2 * data - 1
-    num_zeros = np.prod(data.shape) * p
-    idx_pairs = list(itertools.product(range(data.shape[0]), range(data.shape[1]), range(data.shape[2])))
-
-    # randomly set same number -1/1 data as unobserved (coded as 0)
-    true_idx_pairs = [idx for idx in idx_pairs if data[idx] == 1]
-    false_idx_pairs = [idx for idx in idx_pairs if data[idx] == -1]
-    true_num = len(true_idx_pairs)
-    false_num = len(false_idx_pairs)
-    true_random_idx = np.random.choice(range(true_num), int(num_zeros / 2), replace=False)
-    false_random_idx = np.random.choice(range(false_num), int(num_zeros / 2), replace=False)
-    data_train = data.copy()
-    for i, j, k in true_random_idx:
-        data_train[i, j, k] = 0
-    for i, j, k in false_random_idx:
-        data_train[i, j, k] = 0
-
-    return data_train
+# def split_test_train(data, p=0.1):
+#     """
+#     In a binary matrix {-1,1}, set randomly
+#     p/2 of the 1s and p/2 of the -1s to 0.
+#     To create a test set.
+#
+#     :param data:
+#     :param p:
+#     :return:
+#     """
+#     if -1 not in np.unique(data):
+#         data = 2 * data - 1
+#     num_zeros = np.prod(data.shape) * p
+#     idx_pairs = list(itertools.product(range(data.shape[0]), range(data.shape[1]), range(data.shape[2])))
+#
+#     # randomly set same number -1/1 data as unobserved (coded as 0)
+#     true_idx_pairs = [idx for idx in idx_pairs if data[idx] == 1]
+#     false_idx_pairs = [idx for idx in idx_pairs if data[idx] == -1]
+#     true_num = len(true_idx_pairs)
+#     false_num = len(false_idx_pairs)
+#     true_random_idx = np.random.choice(range(true_num), int(num_zeros / 2), replace=False)
+#     false_random_idx = np.random.choice(range(false_num), int(num_zeros / 2), replace=False)
+#     data_train = data.copy()
+#     for i, j, k in true_random_idx:
+#         data_train[i, j, k] = 0
+#     for i, j, k in false_random_idx:
+#         data_train[i, j, k] = 0
+#
+#     return data_train
 
 
 def generate_data(A, B, C, fuzzy=False):
