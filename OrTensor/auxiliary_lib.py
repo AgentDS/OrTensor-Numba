@@ -28,7 +28,7 @@ def plot_matrix_ax(matrix, ax):
     return ax, cax
 
 
-def plot_matrix(matrix, fig_size=(7, 4), draw_cbar=True, vmin=0, vmax=1, cmap=None):
+def plot_matrix(matrix: np.ndarray, fig_size=(7, 4), draw_cbar=True, vmin=0, vmax=1, cmap=None):
     if np.any(matrix < 0):
         print('rescaling matrix to probabilities')
         matrix = 0.5 * (matrix + 1)
@@ -45,6 +45,32 @@ def plot_matrix(matrix, fig_size=(7, 4), draw_cbar=True, vmin=0, vmax=1, cmap=No
         fig.colorbar(cax, orientation='vertical')
 
     return fig, ax
+
+
+def plot_tensor(tensor: np.ndarray, axis=0, fig_size=(7, 4), draw_cbar=True, vmin=0, vmax=1, cmap=None):
+    figs = []
+    axs = []
+    if axis == 0:
+        I = tensor.shape[0]
+        for i in range(I):
+            fig, ax = plot_matrix(tensor[i, :, :], fig_size, draw_cbar, vmin, vmax, cmap)
+            figs.append(fig)
+            axs.append(ax)
+    elif axis == 1:
+        J = tensor.shape[1]
+        for j in range(J):
+            fig, ax = plot_matrix(tensor[:, j, :], fig_size, draw_cbar, vmin, vmax, cmap)
+            figs.append(fig)
+            axs.append(ax)
+    elif axis == 2:
+        K = tensor.shape[2]
+        for k in range(K):
+            fig, ax = plot_matrix(tensor[:, :, k], fig_size, draw_cbar, vmin, vmax, cmap)
+            figs.append(fig)
+            axs.append(ax)
+    else:
+        raise ValueError("'axis' can only be 0, 1, 2.")
+    return figs, axs
 
 
 def plot_codes(matrix):

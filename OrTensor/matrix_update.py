@@ -19,7 +19,8 @@ def get_sampling_fct(mat):
 
     # standard case: one child, no parents
     def LOM_sampler(mat):
-        basic.sampling_fct(
+        sampling_fct = basic.sampling_fct()
+        sampling_fct(
             mat(),
             mat.fixed_entries,
             *[x() for x in mat.siblings],

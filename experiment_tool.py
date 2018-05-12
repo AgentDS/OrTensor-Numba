@@ -41,3 +41,4 @@ def split_train_test(tensor, rate=0.1, balanced=False):
     training_set = np.copy(tensor)
     training_set[test_mask] = 0
     return {'training_set': training_set, 'test_mask': test_mask}
+

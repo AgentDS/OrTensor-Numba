@@ -128,16 +128,18 @@ def Matrix_product_fuzzy(A, B, C):
 
 
 # def make_sampling_fct_onechild(model):
-@jit('void(int8[:,:], int8[:,:], int8[:,:], int8[:,:],' +
-     'int8[:,:,:], float64, float64)', nogil=True, nopython=True, parallel=True)
-def sampling_fct(A, A_fixed, B, C, X, lbda, logit_prior):
-    I, R = A.shape
-    for i in prange(I):
-        for r in range(R):
-            if A_fixed[i, r] == 1:
-                continue
-            logit_score = lbda * posterior_accumulator(B, C, A[i, :], X[i, :, :], r)
-            A[i, r] = flip_metropolized_Gibbs_numba(logit_score + logit_prior, A[i, r])
+def sampling_fct():
+    @jit('void(int8[:,:], int8[:,:], int8[:,:], int8[:,:],' +
+         'int8[:,:,:], float64, float64)', nogil=True, nopython=True, parallel=True)
+    def sampling_fct_numba(A, A_fixed, B, C, X, lbda, logit_prior):
+        I, R = A.shape
+        for i in prange(I):
+            for r in range(R):
+                if A_fixed[i, r] == 1:
+                    continue
+                logit_score = lbda * posterior_accumulator(B, C, A[i, :], X[i, :, :], r)
+                A[i, r] = flip_metropolized_Gibbs_numba(logit_score + logit_prior, A[i, r])
+    return sampling_fct_numba
 
 
 # post_accumulator_numba
@@ -166,7 +168,7 @@ def posterior_accumulator(B, C, A_i, X_i, r):
 
             flag = False
             for r_ in range(R):
-                if (r_ != r) and (A_i[r_] * B[j, r_] * C[k, r_] == 1):
+                if (r_ != r) and A_i[r_] * B[j, r_] * C[k, r_] == 1:
                     flag = True
                     break
             if flag is False:
@@ -206,5 +208,3 @@ def lambda_update(parm):
     P = correct_prediction(*[factor.val for factor in parm.layer.factors], parm.layer.child())
     IJK = np.prod(parm.layer.child().shape) - np.count_nonzero(parm.layer.child() == 0)
     parm.val = np.max([0, np.min([1000, -np.log(IJK / float(P) - 1)])])
-
-
